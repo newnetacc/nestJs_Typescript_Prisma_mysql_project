@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ApiClient {
+  id           Int      @id @default(autoincrement())
+  clientName   String   @map("client_name") @db.VarChar(50)
+  clientSecret String   @map("client_secret") @db.VarChar(250)
+  clientKey    String   @map("client_key") @db.VarChar(50)
+  dateCreated  DateTime @default(now()) @map("date_created") @db.Timestamp(3)
+  dateUpdated  DateTime @updatedAt @map("date_updated") @db.Timestamp(3)
+
+  @@map("api_client")
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  username     String         @db.VarChar(50)
+  email        String         @unique @db.VarChar(50)
+  balance      Int            @db.Int
+  invoice      Invoice[]
+  transactions Transactions[]
+
+  @@map("user")
+}
+
+model Invoice {
+  id       Int    @id @default(autoincrement()) 
+  userId   Int?  
+  user     User?  @relation(fields: [userId], references: [id])
+  decoded  Json?  @db.Json
+  initiate Json?  @db.Json
+  hash     String @db.LongText
+  node     Node
+
+  @@map("invoice")
+}
+
+model Transactions {
+  id      Int    @id @default(autoincrement())
+  invoice String @db.LongText
+  data    Json?  @db.Json
+  type    Type
+  userId  Int?
+  uuid    String @unique @default(uuid())
+  user    User?  @relation(fields: [userId], references: [id])
+  status  Status
+
+  @@map("transactions")
+}
+
+enum Type {
+  SEND
+  RECEIVE
+}
+
+enum Status {
+  pending
+  paid
+  expired
+  failed
+  unpaid
+}
+
+enum Node {
+  BITNOB
+  UNKNOWN
+}

@@ -1,0 +1,112 @@
+# This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
+
+name: Run Test and Deploy No Loss Lottery Microservice
+on: [push]
+jobs:
+  test:
+    name: Test Job
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/no_loss_ms
+      SALT: $2b$10$UsguRYFFrdVauNbWHgBj/O
+      SENTRY_DSN: https://04bcbd6adf814212a84e86e2eed49c0c@o522674.ingest.sentry.io/5783492
+
+    steps:
+      - name: Setup MySQL and create test DB
+        run: |
+          sudo /etc/init.d/mysql start
+          mysql -e 'CREATE DATABASE no_loss_ms;' -uroot -proot
+          mysql -e 'SHOW DATABASES;' -uroot -proot
+      - name: Check-out the repository (cloning the repository that the action is being run in)
+        uses: actions/checkout@v2
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-no"YYYY-MM-DD"de@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Start MySQL
+        run: sudo service mysql start
+
+      - name: Migrate Database
+        run: |
+          npx prisma migrate deploy
+      - name: Run tests
+        run: npm test
+
+  # deploy-sandbox:
+  #   name: Deploy to sandbox server
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/develop'
+  #   steps:
+  #   - name: executing remote ssh commands using ssh key
+  #     uses: appleboy/ssh-action@master
+  #     with:
+  #       host: ${{ secrets.SSH_DEPLOY_SANDBOX_HOST }}
+  #       username: ${{ secrets.SSH_DEPLOY_USERNAME }}
+  #       key: ${{ secrets.SSH_DEPLOY_SANDBOX_KEY }}
+  #       port: ${{ secrets.SSH_PORT }}
+  #       script: |
+  #         #Update path to include npm and pm2
+  #         export NVM_DIR="$HOME/.nvm"
+  #         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+
+  #         # Add ssh keys
+  #         eval "$(ssh-agent)"
+  #         ssh-add ~/.ssh/ejara_repo_rsa
+
+  #         # Install application updates
+  #         cd ~/apps/valentines-payment
+  #         git fetch
+  #         git reset --hard origin/develop
+
+  #         # install dependencies
+  #         npm i
+  #         npm run build
+
+  #         # Restart application
+  #         pm2 restart payment
+
+  # deploy-production:
+  #   name: Deploy to production server
+  #   runs-on: ubuntu-latest
+  #   needs: [test]
+  #   if: github.ref == 'refs/heads/master'
+  #   steps:
+  #   - name: executing remote ssh commands using ssh key
+  #     uses: appleboy/ssh-action@master
+  #     with:
+  #       host: ${{ secrets.SSH_DEPLOY_HOST }}
+  #       username: ${{ secrets.SSH_DEPLOY_USERNAME }}
+  #       key: ${{ secrets.SSH_DEPLOY_KEY }}
+  #       port: ${{ secrets.SSH_PORT }}
+  #       script: |
+  #         #Update path to include npm and pm2
+  #         export NVM_DIR="$HOME/.nvm"
+  #         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+
+  #         # Add ssh keys
+  #         eval "$(ssh-agent)"
+  #         ssh-add ~/.ssh/ejara_repo_rsa
+
+  #         # Install application updates
+  #         cd ~/valentines-payment
+  #         git fetch
+  #         git reset --hard origin/main
+
+  #         # Migrate Database
+  #         npm i
+  #         npm run build
+
+  #         # Restart application
+  #         pm2 restart 0
